@@ -1,0 +1,21 @@
+{
+  "name": "share-taxi-back",
+  "scripts": {
+  },
+  "stack": "heroku-18",
+  "env": {
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "addons": [
+    "heroku-postgresql"
+  ],
+  "buildpacks": [
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-go"
+    }
+  ]
+}
