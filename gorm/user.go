@@ -21,7 +21,7 @@ type UserDaoImpl struct {
 	schema string
 }
 
-func (dao UserDaoImpl) Connect() {
+func (dao *UserDaoImpl) Connect() {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s",
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_HOST"),
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PORT"),
@@ -85,7 +85,3 @@ func (user User) MapToGin() gin.H {
 		"id":    user.Id,
 	}
 }
-
-//func AddUser(user User) (res) {
-//
-//}

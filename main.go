@@ -31,14 +31,18 @@ func SetupRouter() *gin.Engine {
 		api.POST("/login/fb",
 			func(c *gin.Context) {
 				userDao := gorm.UserDaoImpl{}
-				auth.HandleFacebookLogin(c, userDao, facebook_api.FacebookApiImpl{})
+				userDao.Connect()
+				defer userDao.Disconnect()
+				auth.HandleFacebookLogin(c, &userDao, facebook_api.FacebookApiImpl{})
 				userDao.Disconnect()
 			})
 
 		api.POST("/login/basic",
 			func(c *gin.Context) {
 				userDao := gorm.UserDaoImpl{}
-				auth.HandleLoginWithPassword(c, userDao)
+				userDao.Connect()
+				defer userDao.Disconnect()
+				auth.HandleLoginWithPassword(c, &userDao)
 				userDao.Disconnect()
 			})
 
