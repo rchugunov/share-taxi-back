@@ -49,9 +49,10 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.Facebook
 						})
 					}
 				} else {
+					e := *err
 					c.JSON(http.StatusForbidden, gin.H{
 						"message":   "Couldn't validate user",
-						"exception": (*err).Error(),
+						"exception": e.Error(),
 					})
 				}
 			}
@@ -103,23 +104,28 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao) {
 func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.User, newPassword *string, err *error) {
 	dbUser, getUserError := (*userDao).GetUserByEmail(email)
 	if dbUser != nil {
-		return user, nil, nil
+		return
 	} else if getUserError != nil {
-		resError := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", &getUserError))
-		return nil, nil, &resError
+		erro := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", &getUserError))
+		err = &erro
+		return
 	} else {
 		genPassword, generateError := password.Generate(8, 3, 0, true, false)
 		if generateError != nil {
-			resError := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", &generateError))
-			return nil, nil, &resError
+			erro := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", &generateError))
+			err = &erro
+			return
 		} else {
 			hasher := sha1.New()
 			hasher.Write([]byte(genPassword))
 			sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
-			newUser := gorm.User{Email: email, PasswordHash: sha}
-
-			return &newUser, &genPassword, nil
+			u := gorm.User{Email: email, PasswordHash: sha}
+			user = &u
+			err = nil
+			newPassword = &genPassword
+			(*userDao).AddNewUser(user)
+			return
 		}
 	}
 }
