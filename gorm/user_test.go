@@ -7,18 +7,6 @@ import (
 	"testing"
 )
 
-func TestUserDaoImpl_GetUserByEmail(t *testing.T) {
-	userDao := UserDaoImpl{}
-	userDao.Connect()
-	defer userDao.Disconnect()
-
-	user, err := userDao.GetUserByEmail("chugunov.r@gmail.com")
-	assert.NoError(t, err)
-
-	assert.NotNil(t, user)
-	assert.Equal(t, "chugunov.r@gmail.com", user.Email)
-}
-
 func TestUserDaoImpl_AddNewUser(t *testing.T) {
 	userDao := UserDaoImpl{}
 	userDao.Connect()

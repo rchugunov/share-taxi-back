@@ -2,6 +2,7 @@ package auth
 
 import (
 	fb "com/github/rchugunov/share-taxi-back/auth/facebook_api"
+	"com/github/rchugunov/share-taxi-back/gorm"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/json-iterator/go"
@@ -21,7 +22,7 @@ func TestHandleFacebookLogin(t *testing.T) {
 
 	// Grab our router
 	router := setupRouter(fb.FacebookApiTestImpl{MockFbGetEmail: func(token string, userId string) (s string, e error) {
-		return "", nil
+		return "myemail@gmail.com", nil
 	}})
 
 	strReq, _ := jsoniter.MarshalToString(body)
@@ -61,7 +62,10 @@ func setupRouter(fbApi fb.FacebookApi) *gin.Engine {
 	api := router.Group("/api/v1")
 	{
 		api.POST("/login/fb", func(c *gin.Context) {
-			HandleFacebookLogin(c, fbApi)
+			userDao := gorm.UserDaoImpl{}
+			userDao.Connect()
+			defer userDao.Disconnect()
+			HandleFacebookLogin(c, &userDao, fbApi)
 		})
 	}
 

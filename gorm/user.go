@@ -1,11 +1,9 @@
 package gorm
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
-	"os"
 )
 
 type UserDao interface {
@@ -23,23 +21,7 @@ type UserDaoImpl struct {
 }
 
 func (dao *UserDaoImpl) Connect() {
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s",
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_HOST"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PORT"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_USER"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_DBNAME"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PASSWORD"))
-
-	db, err := gorm.Open("postgres", connectionString)
-
-	if err != nil {
-		panic(fmt.Sprintf("Failed to connect to db: %s", err.Error()))
-	}
-	db.SingularTable(true)
-	db.LogMode(true)
-	dao.dbInst = db
-	dao.schema = "schema_share_taxi_back"
-	dao.dbInst.Exec("set search_path to " + dao.schema)
+	dao.dbInst = GetNewDBInst()
 }
 
 func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {

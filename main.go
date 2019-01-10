@@ -34,7 +34,6 @@ func SetupRouter() *gin.Engine {
 				userDao.Connect()
 				defer userDao.Disconnect()
 				auth.HandleFacebookLogin(c, &userDao, facebook_api.FacebookApiImpl{})
-				userDao.Disconnect()
 			})
 
 		api.POST("/login/basic",
@@ -43,7 +42,6 @@ func SetupRouter() *gin.Engine {
 				userDao.Connect()
 				defer userDao.Disconnect()
 				auth.HandleLoginWithPassword(c, &userDao)
-				userDao.Disconnect()
 			})
 
 		api.GET("/events", func(c *gin.Context) {

@@ -103,16 +103,17 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao) {
 
 func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.User, newPassword *string, err *error) {
 	dbUser, getUserError := (*userDao).GetUserByEmail(email)
-	if dbUser != nil {
+	if dbUser.Id != "" {
+		user = dbUser
 		return
 	} else if getUserError != nil {
-		erro := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", &getUserError))
+		erro := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", getUserError.Error()))
 		err = &erro
 		return
 	} else {
 		genPassword, generateError := password.Generate(8, 3, 0, true, false)
 		if generateError != nil {
-			erro := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", &generateError))
+			erro := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", generateError.Error()))
 			err = &erro
 			return
 		} else {
@@ -139,7 +140,8 @@ func checkUserInDb(userDao *gorm.UserDao, email string, password string) (user *
 	if dbUser != nil {
 		return dbUser, nil
 	} else if getUserError != nil {
-		resError := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", &getUserError))
+		erro := *getUserError
+		resError := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", erro.Error()))
 		return nil, &resError
 	}
 	panic("Shouldn't get here")
