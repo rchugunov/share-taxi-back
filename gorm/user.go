@@ -14,6 +14,7 @@ type UserDao interface {
 	GetUserByEmail(email string) (user *User, err error)
 	GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error)
 	AddNewUser(user *User)
+	DeleteUser(user *User)
 }
 
 type UserDaoImpl struct {
@@ -35,36 +36,30 @@ func (dao *UserDaoImpl) Connect() {
 		panic(fmt.Sprintf("Failed to connect to db: %s", err.Error()))
 	}
 	db.SingularTable(true)
+	db.LogMode(true)
 	dao.dbInst = db
 	dao.schema = "schema_share_taxi_back"
+	dao.dbInst.Exec("set search_path to " + dao.schema)
 }
 
 func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {
-	dao.dbInst = dao.dbInst.Begin()
-	dao.dbInst.Exec("set search_path to " + dao.schema)
-	defer dao.dbInst.Rollback()
-
 	user = &User{}
 	dao.dbInst.Where("email = ?", email).First(user)
 	return
 }
 
 func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error) {
-	dao.dbInst = dao.dbInst.Begin()
-	dao.dbInst.Exec("set search_path to " + dao.schema)
-	defer dao.dbInst.Rollback()
-
 	user = &User{}
 	dao.dbInst.Where("email = ? AND password_hash = ?", email, passwordHash).First(user)
 	return
 }
 
 func (dao UserDaoImpl) AddNewUser(user *User) {
-	dao.dbInst = dao.dbInst.Begin()
-	dao.dbInst.Exec("set search_path to " + dao.schema)
-	defer dao.dbInst.Rollback()
-
 	dao.dbInst.Create(&user)
+}
+
+func (dao UserDaoImpl) DeleteUser(user *User) {
+	dao.dbInst.Delete(&user)
 }
 
 func (dao UserDaoImpl) Disconnect() {
