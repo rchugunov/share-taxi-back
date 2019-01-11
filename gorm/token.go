@@ -1,7 +1,6 @@
 package gorm
 
 import (
-	"github.com/jinzhu/gorm"
 	"time"
 )
 
@@ -19,7 +18,7 @@ type TokenDao interface {
 }
 
 type TokenDaoImpl struct {
-	dbInst *gorm.DB
+	Connection
 }
 
 func (dao TokenDaoImpl) CreateSession(userId string) (newToken *string) {
@@ -27,14 +26,6 @@ func (dao TokenDaoImpl) CreateSession(userId string) (newToken *string) {
 	dao.dbInst.Create(&token)
 	newToken = &token.Value
 	return
-}
-
-func (dao *TokenDaoImpl) Connect() {
-	dao.dbInst = GetNewDBInst()
-}
-
-func (dao TokenDaoImpl) Disconnect() {
-	dao.dbInst.Close()
 }
 
 func (dao TokenDaoImpl) GetUserIdIfValidToken(tokenValue string) (userId *string) {

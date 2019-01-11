@@ -2,7 +2,6 @@ package gorm
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
@@ -16,12 +15,7 @@ type UserDao interface {
 }
 
 type UserDaoImpl struct {
-	dbInst *gorm.DB
-	schema string
-}
-
-func (dao *UserDaoImpl) Connect() {
-	dao.dbInst = GetNewDBInst()
+	Connection
 }
 
 func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {
@@ -42,10 +36,6 @@ func (dao UserDaoImpl) AddNewUser(user *User) {
 
 func (dao UserDaoImpl) DeleteUser(user *User) {
 	dao.dbInst.Delete(&user)
-}
-
-func (dao UserDaoImpl) Disconnect() {
-	dao.dbInst.Close()
 }
 
 type User struct {

@@ -6,7 +6,11 @@ import (
 	"os"
 )
 
-func GetNewDBInst() (db *gorm.DB) {
+type Connection struct {
+	dbInst *gorm.DB
+}
+
+func (Connection) GetNewDBInst() (db *gorm.DB) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s",
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_HOST"),
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PORT"),
@@ -24,4 +28,12 @@ func GetNewDBInst() (db *gorm.DB) {
 	schema := "schema_share_taxi_back"
 	db.Exec("set search_path to " + schema)
 	return
+}
+
+func (conn *Connection) Connect() {
+	conn.dbInst = conn.GetNewDBInst()
+}
+
+func (conn Connection) Disconnect() {
+	conn.dbInst.Close()
 }
