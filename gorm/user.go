@@ -12,10 +12,23 @@ type UserDao interface {
 	GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error)
 	AddNewUser(user *User)
 	DeleteUser(user *User)
+	DeleteUserByEmail(email string)
 }
 
 type UserDaoImpl struct {
 	Connection
+}
+
+func (dao UserDaoImpl) AddNewUser(user *User) {
+	dao.dbInst.Create(&user)
+}
+
+func (dao UserDaoImpl) DeleteUser(user *User) {
+	dao.dbInst.Delete(&user)
+}
+
+func (dao UserDaoImpl) DeleteUserByEmail(email string) {
+	dao.dbInst.Where("email = ?", email).Delete(User{})
 }
 
 func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {
@@ -28,14 +41,6 @@ func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash stri
 	user = &User{}
 	dao.dbInst.Where("email = ? AND password_hash = ?", email, passwordHash).First(user)
 	return
-}
-
-func (dao UserDaoImpl) AddNewUser(user *User) {
-	dao.dbInst.Create(&user)
-}
-
-func (dao UserDaoImpl) DeleteUser(user *User) {
-	dao.dbInst.Delete(&user)
 }
 
 type User struct {

@@ -22,7 +22,16 @@ type BasicAuthData struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.FacebookApi) {
+type Response struct {
+	User      *gorm.User `json:"user"`
+	Token     *string    `json:"token"`
+	Message   *string    `json:"message"`
+	Exception *string    `json:"exception"`
+}
+
+// TODO Refactor all responses from gin.H to returning model
+
+func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao, fbApi fb.FacebookApi) {
 	var json FacebookAuthData
 	bindErr := c.BindJSON(&json)
 	if bindErr == nil {
@@ -38,13 +47,26 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.Facebook
 			} else {
 				user, newPassword, err := createNewUserIfNotExists(&userDao, res)
 				if user != nil {
+
+					token, err := generateNewToken(tokenDao, *user)
+					if err != nil {
+						c.JSON(http.StatusForbidden, gin.H{
+							"message":   "Couldn't create token for user",
+							"user":      user.MapToGin(),
+							"exception": (*err).Error(),
+						})
+						return
+					}
+
 					if newPassword == nil {
 						c.JSON(http.StatusOK, gin.H{
-							"user": user.MapToGin(),
+							"user":  user.MapToGin(),
+							"token": token,
 						})
 					} else {
 						c.JSON(http.StatusOK, gin.H{
 							"user":         user.MapToGin(),
+							"token":        token,
 							"new_password": newPassword,
 						})
 					}
@@ -70,17 +92,27 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.Facebook
 	}
 }
 
-func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao) {
+func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao) {
 	var json BasicAuthData
 	bindErr := c.BindJSON(&json)
 	if bindErr == nil {
 		if strings.TrimSpace(json.Login) != "" && strings.TrimSpace(json.Password) != "" {
 			user, err := checkUserInDb(&userDao, json.Login, json.Password)
 
-			if user != nil {
-				c.JSON(http.StatusOK, gin.H{
-					"user": user.MapToGin(),
-				})
+			if user.Id != "" {
+				token, err := generateNewToken(tokenDao, *user)
+				if err != nil {
+					c.JSON(http.StatusForbidden, gin.H{
+						"message":   "Couldn't create token for user",
+						"user":      user.MapToGin(),
+						"exception": (*err).Error(),
+					})
+				} else {
+					c.JSON(http.StatusOK, gin.H{
+						"user":  user.MapToGin(),
+						"token": token,
+					})
+				}
 			} else {
 				c.JSON(http.StatusForbidden, gin.H{
 					"message":   "Couldn't validate user",
@@ -99,6 +131,15 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao) {
 		})
 		//logging.Timber(fmt.Sprintf("Couldn't bind request data %s", err.Error()))
 	}
+}
+
+func generateNewToken(tokenDao gorm.TokenDao, user gorm.User) (token *string, err *error) {
+	token = tokenDao.CreateSession(user.Id)
+	if token == nil {
+		newError := fmt.Errorf("couldnt create new token")
+		err = &newError
+	}
+	return
 }
 
 func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.User, newPassword *string, err *error) {
