@@ -22,7 +22,16 @@ type BasicAuthData struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.FacebookApi) {
+type Response struct {
+	User      *gorm.User `json:"user"`
+	Token     *string    `json:"token"`
+	Message   *string    `json:"message"`
+	Exception *string    `json:"exception"`
+}
+
+// TODO Refactor all responses from gin.H to returning model
+
+func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao, fbApi fb.FacebookApi) {
 	var json FacebookAuthData
 	bindErr := c.BindJSON(&json)
 	if bindErr == nil {
@@ -38,13 +47,26 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.Facebook
 			} else {
 				user, newPassword, err := createNewUserIfNotExists(&userDao, res)
 				if user != nil {
+
+					token, err := generateNewToken(tokenDao, *user)
+					if err != nil {
+						c.JSON(http.StatusForbidden, gin.H{
+							"message":   "Couldn't create token for user",
+							"user":      user.MapToGin(),
+							"exception": (*err).Error(),
+						})
+						return
+					}
+
 					if newPassword == nil {
 						c.JSON(http.StatusOK, gin.H{
-							"user": user.MapToGin(),
+							"user":  user.MapToGin(),
+							"token": token,
 						})
 					} else {
 						c.JSON(http.StatusOK, gin.H{
 							"user":         user.MapToGin(),
+							"token":        token,
 							"new_password": newPassword,
 						})
 					}
@@ -70,17 +92,27 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, fbApi fb.Facebook
 	}
 }
 
-func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao) {
+func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao) {
 	var json BasicAuthData
 	bindErr := c.BindJSON(&json)
 	if bindErr == nil {
 		if strings.TrimSpace(json.Login) != "" && strings.TrimSpace(json.Password) != "" {
 			user, err := checkUserInDb(&userDao, json.Login, json.Password)
 
-			if user != nil {
-				c.JSON(http.StatusOK, gin.H{
-					"user": user.MapToGin(),
-				})
+			if user.Id != "" {
+				token, err := generateNewToken(tokenDao, *user)
+				if err != nil {
+					c.JSON(http.StatusForbidden, gin.H{
+						"message":   "Couldn't create token for user",
+						"user":      user.MapToGin(),
+						"exception": (*err).Error(),
+					})
+				} else {
+					c.JSON(http.StatusOK, gin.H{
+						"user":  user.MapToGin(),
+						"token": token,
+					})
+				}
 			} else {
 				c.JSON(http.StatusForbidden, gin.H{
 					"message":   "Couldn't validate user",
@@ -101,18 +133,28 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao) {
 	}
 }
 
+func generateNewToken(tokenDao gorm.TokenDao, user gorm.User) (token *string, err *error) {
+	token = tokenDao.CreateSession(user.Id)
+	if token == nil {
+		newError := fmt.Errorf("couldnt create new token")
+		err = &newError
+	}
+	return
+}
+
 func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.User, newPassword *string, err *error) {
 	dbUser, getUserError := (*userDao).GetUserByEmail(email)
-	if dbUser != nil {
+	if dbUser.Id != "" {
+		user = dbUser
 		return
 	} else if getUserError != nil {
-		erro := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", &getUserError))
+		erro := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", getUserError.Error()))
 		err = &erro
 		return
 	} else {
 		genPassword, generateError := password.Generate(8, 3, 0, true, false)
 		if generateError != nil {
-			erro := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", &generateError))
+			erro := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", generateError.Error()))
 			err = &erro
 			return
 		} else {
@@ -139,7 +181,8 @@ func checkUserInDb(userDao *gorm.UserDao, email string, password string) (user *
 	if dbUser != nil {
 		return dbUser, nil
 	} else if getUserError != nil {
-		resError := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", &getUserError))
+		erro := *getUserError
+		resError := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", erro.Error()))
 		return nil, &resError
 	}
 	panic("Shouldn't get here")

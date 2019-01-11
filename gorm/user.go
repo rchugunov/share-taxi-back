@@ -1,11 +1,8 @@
 package gorm
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
-	"os"
 )
 
 type UserDao interface {
@@ -14,61 +11,36 @@ type UserDao interface {
 	GetUserByEmail(email string) (user *User, err error)
 	GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error)
 	AddNewUser(user *User)
+	DeleteUser(user *User)
+	DeleteUserByEmail(email string)
 }
 
 type UserDaoImpl struct {
-	dbInst *gorm.DB
-	schema string
+	Connection
 }
 
-func (dao UserDaoImpl) Connect() {
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s",
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_HOST"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PORT"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_USER"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_DBNAME"),
-		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PASSWORD"))
+func (dao UserDaoImpl) AddNewUser(user *User) {
+	dao.dbInst.Create(&user)
+}
 
-	db, err := gorm.Open("postgres", connectionString)
+func (dao UserDaoImpl) DeleteUser(user *User) {
+	dao.dbInst.Delete(&user)
+}
 
-	if err != nil {
-		panic(fmt.Sprintf("Failed to connect to db: %s", err.Error()))
-	}
-	db.SingularTable(true)
-	dao.dbInst = db
-	dao.schema = "schema_share_taxi_back"
+func (dao UserDaoImpl) DeleteUserByEmail(email string) {
+	dao.dbInst.Where("email = ?", email).Delete(User{})
 }
 
 func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {
-	dao.dbInst = dao.dbInst.Begin()
-	dao.dbInst.Exec("set search_path to " + dao.schema)
-	defer dao.dbInst.Rollback()
-
 	user = &User{}
 	dao.dbInst.Where("email = ?", email).First(user)
 	return
 }
 
 func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error) {
-	dao.dbInst = dao.dbInst.Begin()
-	dao.dbInst.Exec("set search_path to " + dao.schema)
-	defer dao.dbInst.Rollback()
-
 	user = &User{}
 	dao.dbInst.Where("email = ? AND password_hash = ?", email, passwordHash).First(user)
 	return
-}
-
-func (dao UserDaoImpl) AddNewUser(user *User) {
-	dao.dbInst = dao.dbInst.Begin()
-	dao.dbInst.Exec("set search_path to " + dao.schema)
-	defer dao.dbInst.Rollback()
-
-	dao.dbInst.Create(&user)
-}
-
-func (dao UserDaoImpl) Disconnect() {
-	dao.dbInst.Close()
 }
 
 type User struct {
@@ -85,7 +57,3 @@ func (user User) MapToGin() gin.H {
 		"id":    user.Id,
 	}
 }
-
-//func AddUser(user User) (res) {
-//
-//}
