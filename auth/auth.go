@@ -2,6 +2,7 @@ package auth
 
 import (
 	fb "com/github/rchugunov/share-taxi-back/auth/facebook_api"
+	"com/github/rchugunov/share-taxi-back/entities"
 	"com/github/rchugunov/share-taxi-back/gorm"
 	"crypto/sha1"
 	"encoding/base64"
@@ -23,10 +24,9 @@ type BasicAuthData struct {
 }
 
 type Response struct {
-	User      *gorm.User `json:"user"`
-	Token     *string    `json:"token"`
-	Message   *string    `json:"message"`
-	Exception *string    `json:"exception"`
+	entities.BaseResponse
+	User  *entities.User `json:"user"`
+	Token *string        `json:"token"`
 }
 
 // TODO Refactor all responses from gin.H to returning model

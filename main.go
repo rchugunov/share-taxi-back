@@ -3,8 +3,8 @@ package main
 import (
 	"com/github/rchugunov/share-taxi-back/auth"
 	"com/github/rchugunov/share-taxi-back/auth/facebook_api"
-	"com/github/rchugunov/share-taxi-back/events"
 	"com/github/rchugunov/share-taxi-back/gorm"
+	"com/github/rchugunov/share-taxi-back/search"
 	"github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"log"
@@ -54,8 +54,16 @@ func SetupRouter() *gin.Engine {
 				auth.HandleLoginWithPassword(c, &userDao, &tokenDao)
 			})
 
-		api.GET("/events", func(c *gin.Context) {
-			events.TestEvent(c)
+		api.POST("/search", func(c *gin.Context) {
+			searchesDao := gorm.SearchesDaoImpl{}
+			searchesDao.Connect()
+			defer searchesDao.Disconnect()
+
+			tokenDao := gorm.TokenDaoImpl{}
+			tokenDao.Connect()
+			defer tokenDao.Disconnect()
+
+			search.NewSearch(c, &tokenDao, searchesDao)
 		})
 	}
 
