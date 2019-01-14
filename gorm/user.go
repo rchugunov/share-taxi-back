@@ -7,7 +7,7 @@ import (
 
 type UserDao interface {
 	Connect()
-	Disconnect()
+	Disconnect() error
 	GetUserByEmail(email string) (user *User, err error)
 	GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error)
 	AddNewUser(user *User)
@@ -20,26 +20,26 @@ type UserDaoImpl struct {
 }
 
 func (dao UserDaoImpl) AddNewUser(user *User) {
-	dao.dbInst.Create(&user)
+	dao.Create(&user)
 }
 
 func (dao UserDaoImpl) DeleteUser(user *User) {
-	dao.dbInst.Delete(&user)
+	dao.Delete(&user)
 }
 
 func (dao UserDaoImpl) DeleteUserByEmail(email string) {
-	dao.dbInst.Where("email = ?", email).Delete(User{})
+	dao.Where("email = ?", email).Delete(User{})
 }
 
 func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {
 	user = &User{}
-	dao.dbInst.Where("email = ?", email).First(user)
+	dao.Where("email = ?", email).First(user)
 	return
 }
 
 func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error) {
 	user = &User{}
-	dao.dbInst.Where("email = ? AND password_hash = ?", email, passwordHash).First(user)
+	dao.Where("email = ? AND password_hash = ?", email, passwordHash).First(user)
 	return
 }
 

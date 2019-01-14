@@ -48,6 +48,8 @@ func NewSearch(c *gin.Context, tokenDao gorm.TokenDao, searchesDao gorm.Searches
 		c.JSON(http.StatusForbidden, Response{
 			BaseResponse: entities.BaseResponse{Message: &msg}, Data: nil,
 		})
+
+		return
 	}
 
 	var data *[]entities.SearchResult
@@ -56,6 +58,8 @@ func NewSearch(c *gin.Context, tokenDao gorm.TokenDao, searchesDao gorm.Searches
 		c.JSON(http.StatusOK, Response{
 			BaseResponse: entities.BaseResponse{Message: &msg}, Data: &[]entities.SearchResult{},
 		})
+
+		return
 	}
 
 	c.JSON(http.StatusOK, Response{Data: data})
