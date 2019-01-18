@@ -48,7 +48,7 @@ func TestHandleFacebookLogin(t *testing.T) {
 	err := json.Unmarshal(responseBytes, &response)
 	assert.NoError(t, err, string(responseBytes))
 	assert.NotEmpty(t, response.User)
-	assert.NotEmpty(t, *response.Token)
+	assert.NotEmpty(t, response.Token)
 }
 
 func TestHandleLoginWithPassword(t *testing.T) {
@@ -82,7 +82,7 @@ func TestHandleLoginWithPassword(t *testing.T) {
 	err = json.Unmarshal(responseBytes, &response)
 	assert.NoError(t, err, string(responseBytes))
 	assert.NotEmpty(t, response.User)
-	assert.NotEmpty(t, *response.Token)
+	assert.NotEmpty(t, response.Token)
 }
 
 func performRequest(r http.Handler, method, path string) *httptest.ResponseRecorder {

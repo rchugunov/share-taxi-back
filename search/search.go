@@ -25,28 +25,24 @@ func NewSearch(c *gin.Context, tokenDao gorm.TokenDao, searchesDao gorm.Searches
 	request := Request{}
 
 	if err := c.BindJSON(&request); err != nil {
-		msg := "Could not parse request"
-		e := err.Error()
 		c.JSON(http.StatusBadRequest, Response{
-			BaseResponse: entities.BaseResponse{Message: &msg, Exception: &e}, Data: nil,
+			BaseResponse: entities.BaseResponse{Message: "Could not parse request", Exception: err.Error()}, Data: nil,
 		})
 		return
 	}
 
 	var token string
 	if token = c.GetHeader("user_token"); token == "" {
-		msg := "please send user_token in header"
 		c.JSON(http.StatusForbidden, Response{
-			BaseResponse: entities.BaseResponse{Message: &msg}, Data: nil,
+			BaseResponse: entities.BaseResponse{Message: "please send user_token in header"}, Data: nil,
 		})
 		return
 	}
 
 	var userId *string
 	if userId = tokenDao.GetUserIdIfValidToken(token); userId == nil {
-		msg := "could not find user. try to relogin"
 		c.JSON(http.StatusForbidden, Response{
-			BaseResponse: entities.BaseResponse{Message: &msg}, Data: nil,
+			BaseResponse: entities.BaseResponse{Message: "could not find user. try to relogin"}, Data: nil,
 		})
 
 		return
@@ -54,9 +50,8 @@ func NewSearch(c *gin.Context, tokenDao gorm.TokenDao, searchesDao gorm.Searches
 
 	var data *[]entities.SearchResult
 	if data = findOtherSearches(*userId, request, searchesDao); data == nil {
-		msg := "could not find any users nearby"
 		c.JSON(http.StatusOK, Response{
-			BaseResponse: entities.BaseResponse{Message: &msg}, Data: &[]entities.SearchResult{},
+			BaseResponse: entities.BaseResponse{Message: "could not find any users nearby"}, Data: &[]entities.SearchResult{},
 		})
 
 		return

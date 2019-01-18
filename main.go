@@ -54,6 +54,21 @@ func SetupRouter() *gin.Engine {
 				auth.HandleLoginWithPassword(c, &userDao, &tokenDao)
 			})
 
+		api.GET("/user/:id",
+			func(c *gin.Context) {
+				userDao := gorm.UserDaoImpl{}
+				userDao.Connect()
+				defer userDao.Disconnect()
+
+				tokenDao := gorm.TokenDaoImpl{}
+				tokenDao.Connect()
+				defer tokenDao.Disconnect()
+
+				c.JSON(200, gin.H{
+					"result_ok": "super",
+				})
+			})
+
 		api.POST("/search", func(c *gin.Context) {
 			searchesDao := gorm.SearchesDaoImpl{}
 			searchesDao.Connect()
