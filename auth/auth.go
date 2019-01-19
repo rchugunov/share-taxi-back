@@ -2,6 +2,7 @@ package auth
 
 import (
 	fb "com/github/rchugunov/share-taxi-back/auth/facebook_api"
+	"com/github/rchugunov/share-taxi-back/entities"
 	"com/github/rchugunov/share-taxi-back/gorm"
 	"crypto/sha1"
 	"encoding/base64"
@@ -23,156 +24,187 @@ type BasicAuthData struct {
 }
 
 type Response struct {
-	User      *gorm.User `json:"user"`
-	Token     *string    `json:"token"`
-	Message   *string    `json:"message"`
-	Exception *string    `json:"exception"`
+	entities.BaseResponse
+	User        entities.User `json:"user,omitempty"`
+	Token       string        `json:"token"`
+	NewPassword string        `json:"new_password"`
 }
-
-// TODO Refactor all responses from gin.H to returning model
 
 func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao, fbApi fb.FacebookApi) {
 	var json FacebookAuthData
-	bindErr := c.BindJSON(&json)
-	if bindErr == nil {
-		if strings.TrimSpace(json.Token) != "" && strings.TrimSpace(json.UserID) != "" {
 
-			res, err := fbApi.FbGetEmail(json.Token, json.UserID)
-
-			if ae, ok := err.(fb.FbGetError); ok {
-				c.JSON(http.StatusForbidden, gin.H{
-					"message":   ae.Message,
-					"exception": ae.Cause.Error(),
-				})
-			} else {
-				user, newPassword, err := createNewUserIfNotExists(&userDao, res)
-				if user != nil {
-
-					token, err := generateNewToken(tokenDao, *user)
-					if err != nil {
-						c.JSON(http.StatusForbidden, gin.H{
-							"message":   "Couldn't create token for user",
-							"user":      user.MapToGin(),
-							"exception": (*err).Error(),
-						})
-						return
-					}
-
-					if newPassword == nil {
-						c.JSON(http.StatusOK, gin.H{
-							"user":  user.MapToGin(),
-							"token": token,
-						})
-					} else {
-						c.JSON(http.StatusOK, gin.H{
-							"user":         user.MapToGin(),
-							"token":        token,
-							"new_password": newPassword,
-						})
-					}
-				} else {
-					e := *err
-					c.JSON(http.StatusForbidden, gin.H{
-						"message":   "Couldn't validate user",
-						"exception": e.Error(),
-					})
-				}
-			}
-		} else {
-			c.JSON(http.StatusForbidden, gin.H{
-				"message": "token or user_id are wrong format",
-			})
-		}
-	} else {
-		c.JSON(http.StatusForbidden, gin.H{
-			"message":   "Couldn't parse auth data",
-			"exception": bindErr.Error(),
-		})
+	if err := c.BindJSON(&json); err != nil {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: "Couldn't parse auth data", Exception: err.Error()}})
+		return
 		//logging.Timber(fmt.Sprintf("Couldn't bind request data %s", err.Error()))
 	}
+
+	if strings.TrimSpace(json.Token) == "" || strings.TrimSpace(json.UserID) == "" {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: "token or user_id are wrong format"}})
+		return
+	}
+
+	res, err := fbApi.FbGetProfile(json.Token, json.UserID)
+	if ae, ok := err.(fb.FbGetError); ok {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: ae.Message, Exception: ae.Cause.Error()}})
+		return
+	}
+
+	var user *gorm.User
+	var newPassword *string
+	if user, newPassword, err = createNewUserIfNotExists(userDao, res); user == nil || err != nil {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: "Couldn't validate user", Exception: err.Error()}})
+		return
+	}
+
+	var token *string
+	if token, err = generateNewToken(tokenDao, *user); err != nil {
+		c.JSON(http.StatusForbidden,
+			Response{
+				User: entities.User{
+					Id:                   user.Id,
+					Email:                user.Email,
+					FirstName:            user.FirstName,
+					LastName:             user.LastName,
+					PhotoUrl:             user.PhotoUrl,
+					HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
+				},
+				BaseResponse: entities.BaseResponse{Message: "Couldn't create token for user", Exception: err.Error()}},
+		)
+		return
+	}
+
+	if newPassword == nil {
+		c.JSON(http.StatusOK,
+			Response{
+				User: entities.User{
+					Id:                   user.Id,
+					Email:                user.Email,
+					FirstName:            user.FirstName,
+					LastName:             user.LastName,
+					PhotoUrl:             user.PhotoUrl,
+					HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
+				},
+				Token: *token,
+			},
+		)
+		return
+	}
+
+	c.JSON(http.StatusOK,
+		Response{
+			User: entities.User{
+				Id:                   user.Id,
+				Email:                user.Email,
+				FirstName:            user.FirstName,
+				LastName:             user.LastName,
+				PhotoUrl:             user.PhotoUrl,
+				HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
+			},
+			Token:       *token,
+			NewPassword: *newPassword,
+		})
 }
 
 func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao) {
 	var json BasicAuthData
-	bindErr := c.BindJSON(&json)
-	if bindErr == nil {
-		if strings.TrimSpace(json.Login) != "" && strings.TrimSpace(json.Password) != "" {
-			user, err := checkUserInDb(&userDao, json.Login, json.Password)
-
-			if user.Id != "" {
-				token, err := generateNewToken(tokenDao, *user)
-				if err != nil {
-					c.JSON(http.StatusForbidden, gin.H{
-						"message":   "Couldn't create token for user",
-						"user":      user.MapToGin(),
-						"exception": (*err).Error(),
-					})
-				} else {
-					c.JSON(http.StatusOK, gin.H{
-						"user":  user.MapToGin(),
-						"token": token,
-					})
-				}
-			} else {
-				c.JSON(http.StatusForbidden, gin.H{
-					"message":   "Couldn't validate user",
-					"exception": (*err).Error(),
-				})
-			}
-		} else {
-			c.JSON(http.StatusForbidden, gin.H{
-				"message": "login or password are wrong format",
-			})
-		}
-	} else {
-		c.JSON(http.StatusForbidden, gin.H{
-			"message":   "Couldn't parse auth data",
-			"exception": bindErr.Error(),
-		})
-		//logging.Timber(fmt.Sprintf("Couldn't bind request data %s", err.Error()))
+	var err error
+	if err := c.BindJSON(&json); err != nil {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: "Couldn't parse auth data", Exception: err.Error()}},
+		)
+		return
 	}
+	//line
+	if strings.TrimSpace(json.Login) == "" || strings.TrimSpace(json.Password) == "" {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: "login or password are wrong format"}})
+		return
+	}
+
+	var userDTO *gorm.User
+	if userDTO, err = checkUserInDb(&userDao, json.Login, json.Password); err != nil || userDTO.Id == "" {
+		c.JSON(http.StatusForbidden,
+			Response{BaseResponse: entities.BaseResponse{Message: "Couldn't validate user", Exception: err.Error()}})
+		return
+	}
+
+	var token *string
+	if token, err = generateNewToken(tokenDao, *userDTO); err != nil {
+		c.JSON(http.StatusForbidden,
+			Response{
+				User: entities.User{
+					Id:                   userDTO.Id,
+					Email:                userDTO.Email,
+					FirstName:            userDTO.FirstName,
+					LastName:             userDTO.LastName,
+					PhotoUrl:             userDTO.PhotoUrl,
+					HexBytesPhotoPreview: userDTO.GetPhotoPreviewHex(),
+				},
+				BaseResponse: entities.BaseResponse{Message: "Couldn't create token for user", Exception: err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK,
+		Response{
+			User: entities.User{
+				Id:                   userDTO.Id,
+				Email:                userDTO.Email,
+				FirstName:            userDTO.FirstName,
+				LastName:             userDTO.LastName,
+				PhotoUrl:             userDTO.PhotoUrl,
+				HexBytesPhotoPreview: userDTO.GetPhotoPreviewHex(),
+			},
+			Token: *token,
+		})
 }
 
-func generateNewToken(tokenDao gorm.TokenDao, user gorm.User) (token *string, err *error) {
+func generateNewToken(tokenDao gorm.TokenDao, user gorm.User) (token *string, err error) {
 	token = tokenDao.CreateSession(user.Id)
 	if token == nil {
-		newError := fmt.Errorf("couldnt create new token")
-		err = &newError
+		err = fmt.Errorf("couldnt create new token")
 	}
 	return
 }
 
-func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.User, newPassword *string, err *error) {
-	dbUser, getUserError := (*userDao).GetUserByEmail(email)
+func createNewUserIfNotExists(userDao gorm.UserDao, fbUser entities.User) (user *gorm.User, newPassword *string, err error) {
+	dbUser, getUserError := userDao.GetUserByEmail(fbUser.Email)
 	if dbUser.Id != "" {
 		user = dbUser
 		return
 	} else if getUserError != nil {
-		erro := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", getUserError.Error()))
-		err = &erro
+		err = fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", getUserError.Error()))
 		return
 	} else {
 		genPassword, generateError := password.Generate(8, 3, 0, true, false)
 		if generateError != nil {
-			erro := fmt.Errorf(fmt.Sprintf("Could not generate password: %s", generateError.Error()))
-			err = &erro
+			err = fmt.Errorf(fmt.Sprintf("Could not generate password: %s", generateError.Error()))
 			return
 		} else {
 			hasher := sha1.New()
 			hasher.Write([]byte(genPassword))
 			sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
-			u := gorm.User{Email: email, PasswordHash: sha}
+			u := gorm.User{
+				Email:        fbUser.Email,
+				PasswordHash: sha,
+				FirstName:    fbUser.FirstName,
+				LastName:     fbUser.LastName,
+				PhotoUrl:     fbUser.PhotoUrl,
+			}
 			user = &u
 			err = nil
 			newPassword = &genPassword
-			(*userDao).AddNewUser(user)
+			userDao.AddNewUser(user)
 			return
 		}
 	}
 }
 
-func checkUserInDb(userDao *gorm.UserDao, email string, password string) (user *gorm.User, err *error) {
+func checkUserInDb(userDao *gorm.UserDao, email string, password string) (user *gorm.User, err error) {
 	hasher := sha1.New()
 	hasher.Write([]byte(password))
 	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
@@ -181,9 +213,8 @@ func checkUserInDb(userDao *gorm.UserDao, email string, password string) (user *
 	if dbUser != nil {
 		return dbUser, nil
 	} else if getUserError != nil {
-		erro := *getUserError
-		resError := fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", erro.Error()))
-		return nil, &resError
+		err = fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", (*getUserError).Error()))
+		return
 	}
 	panic("Shouldn't get here")
 }

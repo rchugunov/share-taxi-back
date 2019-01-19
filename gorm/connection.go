@@ -7,10 +7,10 @@ import (
 )
 
 type Connection struct {
-	dbInst *gorm.DB
+	gorm.DB
 }
 
-func (Connection) GetNewDBInst() (db *gorm.DB) {
+func (conn *Connection) Connect() {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s",
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_HOST"),
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PORT"),
@@ -18,22 +18,18 @@ func (Connection) GetNewDBInst() (db *gorm.DB) {
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_DBNAME"),
 		os.Getenv("SHARE_TAXI_HEROKU_POSTGRES_PASSWORD"))
 
-	db, err := gorm.Open("postgres", connectionString)
+	c, err := gorm.Open("postgres", connectionString)
+	*conn = Connection{*c}
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to db: %s", err.Error()))
 	}
-	db.SingularTable(true)
-	db.LogMode(true)
+	conn.SingularTable(true)
+	conn.LogMode(true)
 	schema := "schema_share_taxi_back"
-	db.Exec("set search_path to " + schema)
-	return
+	conn.Exec("set search_path to " + schema)
 }
 
-func (conn *Connection) Connect() {
-	conn.dbInst = conn.GetNewDBInst()
-}
-
-func (conn Connection) Disconnect() {
-	conn.dbInst.Close()
+func (conn *Connection) Disconnect() error {
+	return conn.Close()
 }

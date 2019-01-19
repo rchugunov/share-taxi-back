@@ -1,9 +1,14 @@
 package gorm
 
 import (
+	"flag"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
+
+func init() {
+	flag.Int("", 10, "sdfdsfsdf")
+}
 
 func TestTokenDaoImpl_CreateSession(t *testing.T) {
 
@@ -34,4 +39,15 @@ func TestTokenDaoImpl_CreateSession(t *testing.T) {
 	userId = tokenDao.GetUserIdIfValidToken(*token)
 	assert.Empty(t, userId)
 
+	//t.Logf("Dao toString : %s", tokenDao.String())
 }
+
+//
+//type ByteSize float64
+//
+//const (
+//	_ = iota
+//	KB ByteSize = 1 << (10 * iota)
+//	MB
+//	GB
+//)
