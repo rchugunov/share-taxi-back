@@ -1,7 +1,6 @@
 package gorm
 
 import (
-	"github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
@@ -13,10 +12,17 @@ type UserDao interface {
 	AddNewUser(user *User)
 	DeleteUser(user *User)
 	DeleteUserByEmail(email string)
+	GetUserById(id string) (user *User)
 }
 
 type UserDaoImpl struct {
 	Connection
+}
+
+func (dao UserDaoImpl) GetUserById(id string) (user *User) {
+	user = &User{}
+	dao.Where("id = ?", id).First(user)
+	return
 }
 
 func (dao UserDaoImpl) AddNewUser(user *User) {
@@ -44,16 +50,15 @@ func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash stri
 }
 
 type User struct {
-	Id           string `gorm:"primary_key;not null"`
-	Email        string `gorm:"unique;not null"` // set member number to unique and not null
-	PasswordHash string `gorm:"not null"`
-	FirstName    string
-	LastName     string `gorm:"column:second_name"`
+	Id                string `gorm:"primary_key;not null"`
+	Email             string `gorm:"unique;not null"` // set member number to unique and not null
+	PasswordHash      string `gorm:"not null"`
+	FirstName         string
+	LastName          string `gorm:"column:second_name"`
+	PhotoPreviewBytes []byte
+	PhotoUrl          string
 }
 
-func (user User) MapToGin() gin.H {
-	return gin.H{
-		"email": user.Email,
-		"id":    user.Id,
-	}
+func (user User) GetPhotoPreviewHex() string {
+	return ""
 }

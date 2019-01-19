@@ -2,6 +2,7 @@ package auth
 
 import (
 	fb "com/github/rchugunov/share-taxi-back/auth/facebook_api"
+	"com/github/rchugunov/share-taxi-back/entities"
 	"com/github/rchugunov/share-taxi-back/gorm"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -25,8 +26,8 @@ func TestHandleFacebookLogin(t *testing.T) {
 	userDao := gorm.UserDaoImpl{}
 	tokenDao := gorm.TokenDaoImpl{}
 	// Grab our router
-	router := setupRouter(fb.FacebookApiTestImpl{MockFbGetEmail: func(token string, userId string) (s string, e error) {
-		return TEST_EMAIL, nil
+	router := setupRouter(fb.FacebookApiTestImpl{MockFbGetEmail: func(token string, userId string) (s entities.User, e error) {
+		return entities.User{Email: TEST_EMAIL}, nil
 	}}, &userDao, &tokenDao)
 	userDao.Connect()
 	tokenDao.Connect()

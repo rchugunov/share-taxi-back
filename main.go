@@ -5,6 +5,7 @@ import (
 	"com/github/rchugunov/share-taxi-back/auth/facebook_api"
 	"com/github/rchugunov/share-taxi-back/gorm"
 	"com/github/rchugunov/share-taxi-back/search"
+	"com/github/rchugunov/share-taxi-back/user"
 	"github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"log"
@@ -64,9 +65,7 @@ func SetupRouter() *gin.Engine {
 				tokenDao.Connect()
 				defer tokenDao.Disconnect()
 
-				c.JSON(200, gin.H{
-					"result_ok": "super",
-				})
+				user.GetUser(c, &userDao, &tokenDao)
 			})
 
 		api.POST("/search", func(c *gin.Context) {
@@ -78,7 +77,7 @@ func SetupRouter() *gin.Engine {
 			tokenDao.Connect()
 			defer tokenDao.Disconnect()
 
-			search.NewSearch(c, &tokenDao, searchesDao)
+			search.NewSearch(c, &tokenDao, &searchesDao)
 		})
 	}
 

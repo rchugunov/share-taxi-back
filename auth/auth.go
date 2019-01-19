@@ -46,7 +46,7 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 		return
 	}
 
-	res, err := fbApi.FbGetEmail(json.Token, json.UserID)
+	res, err := fbApi.FbGetProfile(json.Token, json.UserID)
 	if ae, ok := err.(fb.FbGetError); ok {
 		c.JSON(http.StatusForbidden,
 			Response{BaseResponse: entities.BaseResponse{Message: ae.Message, Exception: ae.Cause.Error()}})
@@ -55,7 +55,7 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 
 	var user *gorm.User
 	var newPassword *string
-	if user, newPassword, err = createNewUserIfNotExists(&userDao, res); user == nil || err != nil {
+	if user, newPassword, err = createNewUserIfNotExists(userDao, res); user == nil || err != nil {
 		c.JSON(http.StatusForbidden,
 			Response{BaseResponse: entities.BaseResponse{Message: "Couldn't validate user", Exception: err.Error()}})
 		return
@@ -65,7 +65,14 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 	if token, err = generateNewToken(tokenDao, *user); err != nil {
 		c.JSON(http.StatusForbidden,
 			Response{
-				User:         entities.User{Id: user.Id, Email: user.Email, FirstName: user.FirstName, LastName: user.LastName},
+				User: entities.User{
+					Id:                   user.Id,
+					Email:                user.Email,
+					FirstName:            user.FirstName,
+					LastName:             user.LastName,
+					PhotoUrl:             user.PhotoUrl,
+					HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
+				},
 				BaseResponse: entities.BaseResponse{Message: "Couldn't create token for user", Exception: err.Error()}},
 		)
 		return
@@ -74,7 +81,14 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 	if newPassword == nil {
 		c.JSON(http.StatusOK,
 			Response{
-				User:  entities.User{Id: user.Id, Email: user.Email, FirstName: user.FirstName, LastName: user.LastName},
+				User: entities.User{
+					Id:                   user.Id,
+					Email:                user.Email,
+					FirstName:            user.FirstName,
+					LastName:             user.LastName,
+					PhotoUrl:             user.PhotoUrl,
+					HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
+				},
 				Token: *token,
 			},
 		)
@@ -83,7 +97,14 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 
 	c.JSON(http.StatusOK,
 		Response{
-			User:        entities.User{Id: user.Id, Email: user.Email, FirstName: user.FirstName, LastName: user.LastName},
+			User: entities.User{
+				Id:                   user.Id,
+				Email:                user.Email,
+				FirstName:            user.FirstName,
+				LastName:             user.LastName,
+				PhotoUrl:             user.PhotoUrl,
+				HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
+			},
 			Token:       *token,
 			NewPassword: *newPassword,
 		})
@@ -116,13 +137,27 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm
 	if token, err = generateNewToken(tokenDao, *userDTO); err != nil {
 		c.JSON(http.StatusForbidden,
 			Response{
-				User:         entities.User{Id: userDTO.Id, Email: userDTO.Email, FirstName: userDTO.FirstName, LastName: userDTO.LastName},
+				User: entities.User{
+					Id:                   userDTO.Id,
+					Email:                userDTO.Email,
+					FirstName:            userDTO.FirstName,
+					LastName:             userDTO.LastName,
+					PhotoUrl:             userDTO.PhotoUrl,
+					HexBytesPhotoPreview: userDTO.GetPhotoPreviewHex(),
+				},
 				BaseResponse: entities.BaseResponse{Message: "Couldn't create token for user", Exception: err.Error()}})
 		return
 	}
 	c.JSON(http.StatusOK,
 		Response{
-			User:  entities.User{Id: userDTO.Id, Email: userDTO.Email, FirstName: userDTO.FirstName, LastName: userDTO.LastName},
+			User: entities.User{
+				Id:                   userDTO.Id,
+				Email:                userDTO.Email,
+				FirstName:            userDTO.FirstName,
+				LastName:             userDTO.LastName,
+				PhotoUrl:             userDTO.PhotoUrl,
+				HexBytesPhotoPreview: userDTO.GetPhotoPreviewHex(),
+			},
 			Token: *token,
 		})
 }
@@ -135,8 +170,8 @@ func generateNewToken(tokenDao gorm.TokenDao, user gorm.User) (token *string, er
 	return
 }
 
-func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.User, newPassword *string, err error) {
-	dbUser, getUserError := (*userDao).GetUserByEmail(email)
+func createNewUserIfNotExists(userDao gorm.UserDao, fbUser entities.User) (user *gorm.User, newPassword *string, err error) {
+	dbUser, getUserError := userDao.GetUserByEmail(fbUser.Email)
 	if dbUser.Id != "" {
 		user = dbUser
 		return
@@ -153,11 +188,17 @@ func createNewUserIfNotExists(userDao *gorm.UserDao, email string) (user *gorm.U
 			hasher.Write([]byte(genPassword))
 			sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
-			u := gorm.User{Email: email, PasswordHash: sha}
+			u := gorm.User{
+				Email:        fbUser.Email,
+				PasswordHash: sha,
+				FirstName:    fbUser.FirstName,
+				LastName:     fbUser.LastName,
+				PhotoUrl:     fbUser.PhotoUrl,
+			}
 			user = &u
 			err = nil
 			newPassword = &genPassword
-			(*userDao).AddNewUser(user)
+			userDao.AddNewUser(user)
 			return
 		}
 	}
