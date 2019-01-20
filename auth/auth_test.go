@@ -67,7 +67,7 @@ func TestHandleLoginWithPassword(t *testing.T) {
 	request := BasicAuthData{Login: TEST_EMAIL, Password: "slfsdkfmksdflk"}
 	strReq, _ := jsoniter.MarshalToString(request)
 
-	user, err := userDao.GetUserByEmail(TEST_EMAIL)
+	user, _ := userDao.GetUserByEmail(TEST_EMAIL)
 	if user.Id == "" {
 		userDao.AddNewUser(&gorm.User{Email: TEST_EMAIL, PasswordHash: "jDuA0aQQUKIy6h9P6eNP2Ez-mEc="})
 	}
@@ -80,7 +80,7 @@ func TestHandleLoginWithPassword(t *testing.T) {
 	// Convert the JSON response to a map
 	var response Response
 	responseBytes := w.Body.Bytes()
-	err = json.Unmarshal(responseBytes, &response)
+	err := json.Unmarshal(responseBytes, &response)
 	assert.NoError(t, err, string(responseBytes))
 	assert.NotEmpty(t, response.User)
 	assert.NotEmpty(t, response.Token)

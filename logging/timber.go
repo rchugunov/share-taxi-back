@@ -16,7 +16,7 @@ func Timber(errorText string) {
 	}
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("authorization", "Basic "+base642.StdEncoding.EncodeToString([]byte(API_KEY)))
-	_, err = http.DefaultClient.Do(req)
+	_, _ = http.DefaultClient.Do(req)
 }
 
 func base64(key string) string {

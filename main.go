@@ -19,12 +19,12 @@ func main() {
 		log.Fatal("$PORT must be set")
 	}
 
-	router := SetupRouter()
+	router := setupRouter()
 
 	router.Run(":" + port)
 }
 
-func SetupRouter() *gin.Engine {
+func setupRouter() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
 	api := router.Group("/api/v1")
