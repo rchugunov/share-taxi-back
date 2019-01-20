@@ -49,6 +49,7 @@ func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash stri
 	return
 }
 
+// User represents DTO model from user table in database.
 type User struct {
 	Id                string `gorm:"primary_key;not null"`
 	Email             string `gorm:"unique;not null"` // set member number to unique and not null

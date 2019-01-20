@@ -7,16 +7,18 @@ import (
 	"net/http"
 )
 
+// Response class is used for returning result back to client.
 type Response struct {
 	entities.BaseResponse
 	User entities.User `json:"user,omitempty"`
 }
 
+// GetUser handles request, checks user token and returns user object if exists.
 func GetUser(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao) {
 	var token string
 	if token = c.GetHeader("token"); token == "" {
 		c.JSON(http.StatusForbidden, Response{
-			BaseResponse: entities.BaseResponse{Message: "please send user_token in header"},
+			BaseResponse: entities.BaseResponse{Message: "Please send token in header"},
 		})
 		return
 	}
@@ -24,7 +26,7 @@ func GetUser(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao) {
 	var userId *string
 	if userId = tokenDao.GetUserIdIfValidToken(token); userId == nil {
 		c.JSON(http.StatusForbidden, Response{
-			BaseResponse: entities.BaseResponse{Message: "could not find user. try to relogin"},
+			BaseResponse: entities.BaseResponse{Message: "Could not find user. Try to relogin"},
 		})
 
 		return
