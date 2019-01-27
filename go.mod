@@ -1,4 +1,4 @@
-module com/github/rchugunov/share-taxi-back
+module com.github.rchugunov/share-taxi-back
 
 require (
 	cloud.google.com/go v0.34.0 // indirect

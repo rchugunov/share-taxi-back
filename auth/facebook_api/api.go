@@ -1,7 +1,7 @@
 package facebook_api
 
 import (
-	"com/github/rchugunov/share-taxi-back/entities"
+	"com.github.rchugunov/share-taxi-back/entities"
 	"fmt"
 	"github.com/huandu/facebook"
 	"strings"

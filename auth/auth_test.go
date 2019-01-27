@@ -1,9 +1,9 @@
 package auth
 
 import (
-	fb "com/github/rchugunov/share-taxi-back/auth/facebook_api"
-	"com/github/rchugunov/share-taxi-back/entities"
-	"com/github/rchugunov/share-taxi-back/gorm"
+	fb "com.github.rchugunov/share-taxi-back/auth/facebook_api"
+	"com.github.rchugunov/share-taxi-back/entities"
+	"com.github.rchugunov/share-taxi-back/gorm"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/json-iterator/go"
