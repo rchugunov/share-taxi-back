@@ -1,8 +1,8 @@
 package user
 
 import (
-	"com/github/rchugunov/share-taxi-back/entities"
-	"com/github/rchugunov/share-taxi-back/gorm"
+	"com.github.rchugunov/share-taxi-back/entities"
+	"com.github.rchugunov/share-taxi-back/gorm"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
