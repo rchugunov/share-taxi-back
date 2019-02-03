@@ -25,9 +25,9 @@ type BasicAuthData struct {
 
 type Response struct {
 	entities.BaseResponse
-	User        entities.User `json:"user,omitempty"`
-	Token       string        `json:"token"`
-	NewPassword string        `json:"new_password"`
+	User        *entities.User `json:"user,omitempty"`
+	Token       *string        `json:"token,omitempty"`
+	NewPassword *string        `json:"new_password,omitempty"`
 }
 
 func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.TokenDao, fbApi fb.FacebookApi) {
@@ -65,7 +65,7 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 	if token, err = generateNewToken(tokenDao, *user); err != nil {
 		c.JSON(http.StatusForbidden,
 			Response{
-				User: entities.User{
+				User: &entities.User{
 					Id:                   user.Id,
 					Email:                user.Email,
 					FirstName:            user.FirstName,
@@ -81,7 +81,7 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 	if newPassword == nil {
 		c.JSON(http.StatusOK,
 			Response{
-				User: entities.User{
+				User: &entities.User{
 					Id:                   user.Id,
 					Email:                user.Email,
 					FirstName:            user.FirstName,
@@ -89,7 +89,7 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 					PhotoUrl:             user.PhotoUrl,
 					HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
 				},
-				Token: *token,
+				Token: token,
 			},
 		)
 		return
@@ -97,7 +97,7 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 
 	c.JSON(http.StatusOK,
 		Response{
-			User: entities.User{
+			User: &entities.User{
 				Id:                   user.Id,
 				Email:                user.Email,
 				FirstName:            user.FirstName,
@@ -105,8 +105,8 @@ func HandleFacebookLogin(c *gin.Context, userDao gorm.UserDao, tokenDao gorm.Tok
 				PhotoUrl:             user.PhotoUrl,
 				HexBytesPhotoPreview: user.GetPhotoPreviewHex(),
 			},
-			Token:       *token,
-			NewPassword: *newPassword,
+			Token:       token,
+			NewPassword: newPassword,
 		})
 }
 
@@ -127,7 +127,7 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm
 	}
 
 	var userDTO *gorm.User
-	if userDTO, err = checkUserInDb(&userDao, json.Login, json.Password); err != nil || userDTO.Id == "" {
+	if userDTO, err = checkUserInDb(&userDao, json.Login, json.Password); err != nil {
 		c.JSON(http.StatusForbidden,
 			Response{BaseResponse: entities.BaseResponse{Message: "Couldn't validate user", Exception: err.Error()}})
 		return
@@ -137,7 +137,7 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm
 	if token, err = generateNewToken(tokenDao, *userDTO); err != nil {
 		c.JSON(http.StatusForbidden,
 			Response{
-				User: entities.User{
+				User: &entities.User{
 					Id:                   userDTO.Id,
 					Email:                userDTO.Email,
 					FirstName:            userDTO.FirstName,
@@ -150,7 +150,7 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm
 	}
 	c.JSON(http.StatusOK,
 		Response{
-			User: entities.User{
+			User: &entities.User{
 				Id:                   userDTO.Id,
 				Email:                userDTO.Email,
 				FirstName:            userDTO.FirstName,
@@ -158,7 +158,7 @@ func HandleLoginWithPassword(c *gin.Context, userDao gorm.UserDao, tokenDao gorm
 				PhotoUrl:             userDTO.PhotoUrl,
 				HexBytesPhotoPreview: userDTO.GetPhotoPreviewHex(),
 			},
-			Token: *token,
+			Token: token,
 		})
 }
 
@@ -210,7 +210,7 @@ func checkUserInDb(userDao *gorm.UserDao, email string, password string) (user *
 	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
 	dbUser, getUserError := (*userDao).GetUserByEmailAndPassword(email, sha)
-	if dbUser != nil {
+	if dbUser != nil && dbUser.Id != "" {
 		return dbUser, nil
 	} else if getUserError != nil {
 		err = fmt.Errorf(fmt.Sprintf("Could not retrieve user: %s", (*getUserError).Error()))
