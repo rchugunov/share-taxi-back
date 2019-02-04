@@ -23,3 +23,13 @@ func TestUserDaoImpl_AddNewUser(t *testing.T) {
 	assert.NotEmpty(t, userId, "user was not added unfortunately")
 	assert.Empty(t, existingUser, "couldn't delete user unfortunately")
 }
+
+func TestUserDaoImpl_GetUserByEmailAndPassword(t *testing.T) {
+	userDao := UserDaoImpl{}
+	userDao.Connect()
+	defer userDao.Disconnect()
+
+	user, err := userDao.GetUserByEmailAndPassword("222", "000")
+	assert.Nil(t, user, "user should be nil")
+	assert.NotNil(t, err, "err should not be nil")
+}

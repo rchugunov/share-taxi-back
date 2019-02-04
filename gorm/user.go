@@ -1,6 +1,7 @@
 package gorm
 
 import (
+	"fmt"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
@@ -44,8 +45,14 @@ func (dao UserDaoImpl) GetUserByEmail(email string) (user *User, err error) {
 }
 
 func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error) {
-	user = &User{}
-	dao.Where("email = ? AND password_hash = ?", email, passwordHash).First(user)
+	u := &User{}
+	dao.Where("email = ? AND password_hash = ?", email, passwordHash).First(u)
+	if u.Id == "" {
+		e := fmt.Errorf("user does not exist")
+		err = &e
+	} else {
+		user = u
+	}
 	return
 }
 
