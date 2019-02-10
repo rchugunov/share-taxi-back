@@ -5,6 +5,7 @@ import (
 	"com.github.rchugunov/share-taxi-back/gorm"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 type Request struct {
@@ -16,9 +17,18 @@ type Request struct {
 	CreatedAt                 uint32            `json:"created_at" binding:"required"`
 }
 
+func (request Request) toEntity() entities.SearchRequest {
+	return entities.SearchRequest{
+		OrigPoint:   request.Origin,
+		DestPoint:   request.Destination,
+		WaitingTime: uint16(request.WaitingTimeInSeconds),
+		CreatedAt:   time.Unix(int64(request.CreatedAt), 0),
+	}
+}
+
 type Response struct {
 	entities.BaseResponse
-	Data *[]entities.SearchResult `json:"data"`
+	Data *entities.SearchResult `json:"data,omitempty"`
 }
 
 func NewSearch(c *gin.Context, tokenDao gorm.TokenDao, searchesDao gorm.SearchesDao) {
@@ -48,18 +58,33 @@ func NewSearch(c *gin.Context, tokenDao gorm.TokenDao, searchesDao gorm.Searches
 		return
 	}
 
-	var data *[]entities.SearchResult
-	if data = findOtherSearches(*userId, request, searchesDao); data == nil {
-		c.JSON(http.StatusOK, Response{
-			BaseResponse: entities.BaseResponse{Message: "could not find any users nearby"}, Data: &[]entities.SearchResult{},
+	data, err := findOtherSearches(*userId, request, searchesDao)
+	if err != nil {
+		c.JSON(http.StatusForbidden, Response{
+			BaseResponse: entities.BaseResponse{Message: "could not find any users nearby"}, Data: &entities.SearchResult{},
 		})
-
 		return
+	}
+
+	if data == nil {
+		c.JSON(http.StatusOK, Response{
+			BaseResponse: entities.BaseResponse{Message: "could not find any users nearby"}, Data: &entities.SearchResult{},
+		})
 	}
 
 	c.JSON(http.StatusOK, Response{Data: data})
 }
 
-func findOtherSearches(userId string, request Request, searchesDao gorm.SearchesDao) *[]entities.SearchResult {
-	return &[]entities.SearchResult{}
+func findOtherSearches(userId string, request Request, searchesDao gorm.SearchesDao) (*entities.SearchResult, error) {
+	err := validateSearchRequest(request)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return searchesDao.SearchUsersNearBy(userId, request.toEntity()), nil
+}
+
+func validateSearchRequest(request Request) error {
+	return nil
 }
