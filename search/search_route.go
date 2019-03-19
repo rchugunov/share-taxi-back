@@ -82,7 +82,7 @@ func findOtherSearches(userId string, request Request, searchesDao gorm.Searches
 		return nil, err
 	}
 
-	return searchesDao.SearchUsersNearBy(userId, request.toEntity()), nil
+	return searchesDao.SearchUsersNearby(userId, request.toEntity())
 }
 
 func validateSearchRequest(request Request) error {

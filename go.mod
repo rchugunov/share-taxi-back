@@ -3,6 +3,7 @@ module com.github.rchugunov/share-taxi-back
 require (
 	cloud.google.com/go v0.34.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20181212234831-e0a55b97c705 // indirect
+	github.com/cweill/gotests v1.5.2 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20181014144952-4e0d7dc8888f // indirect
 	github.com/dewski/spatial v0.0.0-20181128024453-3994c1da2ef8
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
@@ -23,7 +24,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/sethvargo/go-password v0.1.2
 	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
 	github.com/stretchr/testify v1.3.0
@@ -33,6 +34,7 @@ require (
 	golang.org/x/net v0.0.0-20181220203305-927f97764cc3 // indirect
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4 // indirect
 	golang.org/x/sys v0.0.0-20190203050204-7ae0202eb74c // indirect
+	golang.org/x/tools v0.0.0-20190208222737-3744606dbb67 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
