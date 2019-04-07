@@ -26,10 +26,10 @@ func (conn *Connection) Connect() {
 	}
 	conn.SingularTable(true)
 	conn.LogMode(true)
-	schema := "schema_share_taxi_back"
+	schema := "public"
 	conn.Exec("set search_path to " + schema)
 }
 
-func (conn *Connection) Disconnect() error {
-	return conn.Close()
+func (conn *Connection) Disconnect() {
+	_ = conn.Close()
 }

@@ -7,13 +7,14 @@ import (
 
 type UserDao interface {
 	Connect()
-	Disconnect() error
+	Disconnect()
 	GetUserByEmail(email string) (user *User, err error)
 	GetUserByEmailAndPassword(email string, passwordHash string) (user *User, err *error)
 	AddNewUser(user *User)
 	DeleteUser(user *User)
 	DeleteUserByEmail(email string)
 	GetUserById(id string) (user *User)
+	Clear()
 }
 
 type UserDaoImpl struct {
@@ -54,6 +55,10 @@ func (dao UserDaoImpl) GetUserByEmailAndPassword(email string, passwordHash stri
 		user = u
 	}
 	return
+}
+
+func (dao UserDaoImpl) Clear() {
+	dao.Delete(User{})
 }
 
 // User represents DTO model from user table in database.

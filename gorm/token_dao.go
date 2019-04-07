@@ -13,7 +13,7 @@ type Token struct {
 
 type TokenDao interface {
 	Connect()
-	Disconnect() error
+	Disconnect()
 	GetUserIdIfValidToken(token string) (userId *string)
 	CreateSession(userId string) (newToken *string)
 }

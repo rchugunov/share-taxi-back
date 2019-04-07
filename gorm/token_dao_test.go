@@ -1,14 +1,9 @@
 package gorm
 
 import (
-	"flag"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
-
-func init() {
-	flag.Int("", 10, "sdfdsfsdf")
-}
 
 func TestTokenDaoImpl_CreateSession(t *testing.T) {
 

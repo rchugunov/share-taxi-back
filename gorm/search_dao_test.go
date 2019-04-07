@@ -16,50 +16,126 @@ var searchesDao = SearchesDaoImpl{
 }
 
 var searchRequest1 = entities.SearchRequest{
-	OrigPoint:   entities.Location{Lat: 10, Long: 10},
-	DestPoint:   entities.Location{Lat: 10, Long: 10},
-	CreatedAt:   time.Now().UTC(),
-	WaitingTime: 120,
+	OrigPoint:      entities.Location{Lat: 10, Long: 10},
+	DestPoint:      entities.Location{Lat: 10, Long: 10},
+	CreatedAt:      time.Now().UTC(),
+	WaitingSeconds: 100,
 }
 
 var searchRequest2 = entities.SearchRequest{
-	OrigPoint:   entities.Location{Lat: 12, Long: 11},
-	DestPoint:   entities.Location{Lat: 13, Long: 9},
-	CreatedAt:   time.Now().UTC().AddDate(0, 0, 1),
-	WaitingTime: 120,
-}
-
-var searchResponse = entities.SearchResult{
-	UserList: []entities.UserWithLocation{},
+	OrigPoint:      entities.Location{Lat: 12, Long: 11},
+	DestPoint:      entities.Location{Lat: 13, Long: 9},
+	CreatedAt:      time.Now().UTC().AddDate(0, 0, 1),
+	WaitingSeconds: 120,
 }
 
 func TestSearchesDaoImpl_SearchUsersNearBy(t *testing.T) {
+
+	var searchRequest1 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 0, 30, 0, time.Local),
+		WaitingSeconds: 120,
+	}
+
+	var searchRequest2 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 2, 40, 0, time.Local),
+		WaitingSeconds: 100,
+	}
+
+	testSearchUsersNearby(t, searchRequest1, searchRequest2, false, "Expected behavior: Second starts later then first finishes")
+
+	var searchRequest3 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 0, 30, 0, time.Local),
+		WaitingSeconds: 120,
+	}
+
+	var searchRequest4 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 2, 10, 0, time.Local),
+		WaitingSeconds: 100,
+	}
+
+	testSearchUsersNearby(t, searchRequest3, searchRequest4, true, "Expected behavior: Second starts before then first finishes")
+
+	var searchRequest5 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 2, 30, 0, time.Local),
+		WaitingSeconds: 120,
+	}
+
+	var searchRequest6 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 2, 10, 0, time.Local),
+		WaitingSeconds: 10,
+	}
+
+	testSearchUsersNearby(t, searchRequest5, searchRequest6, false, "Expected behavior: Second finishes before then first starts")
+
+	var searchRequest7 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 2, 30, 0, time.Local),
+		WaitingSeconds: 120,
+	}
+
+	var searchRequest8 = entities.SearchRequest{
+		OrigPoint:      entities.Location{Lat: 10, Long: 10},
+		DestPoint:      entities.Location{Lat: 10, Long: 10},
+		CreatedAt:      time.Date(0, 0, 1, 0, 2, 10, 0, time.Local),
+		WaitingSeconds: 100,
+	}
+
+	testSearchUsersNearby(t, searchRequest7, searchRequest8, false, "Expected behavior: Second starts before then first starts, but finishes after first starts")
+}
+
+func testSearchUsersNearby(
+	t *testing.T,
+	searchRequest1 entities.SearchRequest,
+	searchRequest2 entities.SearchRequest,
+	searchShouldBeFound bool,
+	message string,
+) {
+	searchesDao.Connect()
+	defer searchesDao.Disconnect()
 	userDao.Connect()
 	defer userDao.Disconnect()
 
-	testMyUser := &User{Email: "testMyUser@gmail.co"}
-	testMyUser, _ = userDao.GetUserByEmail("testMyUser@gmail.co")
-	if testMyUser == nil || testMyUser.Id == "" {
-		userDao.AddNewUser(testMyUser)
+	userDao.Clear()
+	testMyUser := User{Email: "testMyUser@gmail.co"}
+	userDao.AddNewUser(&testMyUser)
+
+	testOtherUser := User{Email: "testOtherUser@gmail.co"}
+	userDao.AddNewUser(&testOtherUser)
+
+	searchesDao.Clear()
+
+	var search1 *Search
+	var err error
+	if search1, err = searchesDao.createNewSearch(testMyUser.Id, searchRequest1); err != nil {
+		t.Error(err.Error())
 	}
 
-	testOtherUser := &User{Email: "testOtherUser@gmail.co"}
-	testOtherUser, _ = userDao.GetUserByEmail("testOtherUser@gmail.co")
-	if testOtherUser == nil || testOtherUser.Id == "" {
-		userDao.AddNewUser(testOtherUser)
+	assert.NotEmpty(t, search1.Id)
+
+	var searchResult *entities.SearchResult
+	if searchResult, err = searchesDao.SearchUsersNearby(testOtherUser.Id, searchRequest2); err != nil {
+		t.Error(err.Error())
 	}
 
-	searchesDao.Connect()
-	defer searchesDao.Disconnect()
-	defer searchesDao.Clear()
-
-	err := searchesDao.createNewSearch(testMyUser.Id, searchRequest1)
-	assert.NoError(t, err)
-
-	result, err := searchesDao.SearchUsersNearby(testOtherUser.Id, searchRequest2)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(result.UserList), "Expected only one search")
-	assert.Equal(t, testMyUser.Id, result.UserList[0].User.Id, "Previous search not found")
+	if searchShouldBeFound {
+		assert.NotNil(t, searchResult, message)
+		assert.Equal(t, testOtherUser.Id, searchResult.UserList[0].User.Id, message)
+	} else {
+		assert.Nil(t, searchResult, message)
+	}
 }
 
 func TestSearchesDaoImpl_createNewSearch(t *testing.T) {
@@ -68,14 +144,41 @@ func TestSearchesDaoImpl_createNewSearch(t *testing.T) {
 	userDao.Connect()
 	defer userDao.Disconnect()
 
-	testMyUser := &User{}
-	testMyUser, _ = userDao.GetUserByEmail("testMyUser@gmail.co")
-	if testMyUser == nil || testMyUser.Id == "" {
-		testMyUser = &User{Email: "testMyUser@gmail.co"}
-		userDao.AddNewUser(testMyUser)
-	}
+	userDao.Clear()
+	testMyUser := User{Email: "testMyUser@gmail.co"}
+	userDao.AddNewUser(&testMyUser)
 
-	if err := searchesDao.createNewSearch(testMyUser.Id, searchRequest1); err != nil {
+	searchesDao.Clear()
+	if _, err := searchesDao.createNewSearch(testMyUser.Id, searchRequest1); err != nil {
 		t.Error(err.Error())
 	}
+}
+
+func TestSearchesDaoImpl_createNewSearch_TheSameUserNewSearch(t *testing.T) {
+	searchesDao.Connect()
+	defer searchesDao.Disconnect()
+	userDao.Connect()
+	defer userDao.Disconnect()
+
+	userDao.Clear()
+	testMyUser := User{Email: "testMyUser@gmail.co"}
+	userDao.AddNewUser(&testMyUser)
+
+	searchesDao.Clear()
+	var search1 *Search
+	var err error
+	if search1, err = searchesDao.createNewSearch(testMyUser.Id, searchRequest1); err != nil {
+		t.Error(err.Error())
+	}
+
+	assert.NotEmpty(t, search1.Id)
+
+	var search2 *Search
+	if search2, err = searchesDao.createNewSearch(testMyUser.Id, searchRequest2); err != nil {
+		t.Error(err.Error())
+	}
+
+	assert.NotEmpty(t, search2.Id)
+	assert.Equal(t, search1.Id, search2.Id)
+	assert.NotEqual(t, search1.WaitingTime, search2.WaitingTime)
 }

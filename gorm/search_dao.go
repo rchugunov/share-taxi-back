@@ -14,12 +14,13 @@ type Search struct {
 	OrigPoint   spatial.Point `gorm:"not null"`
 	DestPoint   spatial.Point `gorm:"not null"`
 	CreatedAt   time.Time     `gorm:"not null"`
+	FinishedAt  time.Time     `gorm:"not null"`
 	WaitingTime uint16        `gorm:"not null;column:wait_seconds"`
 }
 
 type SearchesDao interface {
 	Connect()
-	Disconnect() error
+	Disconnect()
 	SearchUsersNearby(currentUserId string, request entities.SearchRequest) (*entities.SearchResult, error)
 	Clear()
 }
@@ -31,14 +32,23 @@ type SearchesDaoImpl struct {
 
 func (dao *SearchesDaoImpl) SearchUsersNearby(currentUserId string, request entities.SearchRequest) (*entities.SearchResult, error) {
 	var searches []Search
-	dao.Where("user_id != ? ", currentUserId).Find(&searches)
+	dao.Where(
+		"user_id != ? and finished_at > ? and created_at < ?",
+		currentUserId,
+		request.CreatedAt,
+		request.CreatedAt,
+	).Find(&searches)
 	dbErrors := dao.GetErrors()
 	if len(dbErrors) > 0 {
 		return nil, errors2.Wrap(dbErrors[0], "SearchUsersNearby failed")
 	}
 
-	if err := dao.createNewSearch(currentUserId, request); err != nil {
+	if _, err := dao.createNewSearch(currentUserId, request); err != nil {
 		return nil, err
+	}
+
+	if len(searches) == 0 {
+		return nil, nil
 	}
 
 	result := entities.SearchResult{
@@ -66,23 +76,28 @@ func (dao *SearchesDaoImpl) SearchUsersNearby(currentUserId string, request enti
 	return &result, nil
 }
 
-func (dao *SearchesDaoImpl) createNewSearch(currentUserId string, request entities.SearchRequest) error {
-	search := &Search{
+func (dao *SearchesDaoImpl) createNewSearch(currentUserId string, request entities.SearchRequest) (*Search, error) {
+	timeStarted := request.CreatedAt
+	searchToUpdate := &Search{
 		UserId:      currentUserId,
 		OrigPoint:   spatial.Point{Lat: request.OrigPoint.Lat, Lng: request.OrigPoint.Long},
 		DestPoint:   spatial.Point{Lat: request.DestPoint.Lat, Lng: request.DestPoint.Long},
-		CreatedAt:   time.Now(),
-		WaitingTime: request.WaitingTime,
+		CreatedAt:   request.CreatedAt,
+		WaitingTime: request.WaitingSeconds,
+		FinishedAt:  timeStarted.Add(time.Duration(request.WaitingSeconds) * time.Second),
 	}
-	dao.Where(Search{UserId: currentUserId}).Assign(search).FirstOrCreate(search)
-	if len(search.Id) == 0 {
-		return fmt.Errorf("couldn't create or update search")
-	}
+	search := &Search{UserId: currentUserId}
+	dao.Where(search).Assign(searchToUpdate).FirstOrCreate(search)
 	dbErrors := dao.GetErrors()
 	if len(dbErrors) > 0 {
-		return errors2.Wrap(dbErrors[0], "SearchUsersNearby failed")
+		return nil, errors2.Wrap(dbErrors[0], "SearchUsersNearby failed")
 	}
-	return nil
+
+	if len(search.Id) == 0 {
+		return nil, fmt.Errorf("couldn't create or update search")
+	}
+
+	return search, nil
 }
 
 func (dao *SearchesDaoImpl) Clear() {

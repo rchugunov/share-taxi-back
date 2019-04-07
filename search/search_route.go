@@ -19,10 +19,10 @@ type Request struct {
 
 func (request Request) toEntity() entities.SearchRequest {
 	return entities.SearchRequest{
-		OrigPoint:   request.Origin,
-		DestPoint:   request.Destination,
-		WaitingTime: uint16(request.WaitingTimeInSeconds),
-		CreatedAt:   time.Unix(int64(request.CreatedAt), 0),
+		OrigPoint:      request.Origin,
+		DestPoint:      request.Destination,
+		WaitingSeconds: uint16(request.WaitingTimeInSeconds),
+		CreatedAt:      time.Unix(int64(request.CreatedAt), 0),
 	}
 }
 
